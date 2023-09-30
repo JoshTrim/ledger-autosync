@@ -1002,3 +1002,27 @@ class VenmoConverter(CsvConverter):
 
     def get_csv_id(self, row):
         return "venmo.{}".format(Converter.clean_id(row["ID"]))
+
+class WestpacConverter(CsvConverter):
+    FIELDSET = set(["Bank Account",	"Date",	"Narrative", "Debit Amount", "Credit Amount", "Balance", "Categories", "Serial"])
+
+    def __init__(self, *args, **kwargs):
+        super(WestpacConverter, self).__init__(*args, **kwargs)
+
+    def convert(self, row):
+        if row['Debit Amount'] != '':
+            amount = row['Debit Amount']
+            reverse = True
+        else:
+            amount = row['Credit Amount']
+            reverse = False
+
+        if reverse:
+            account = 'expenses'
+        else:
+            account = 'income'
+        return Transaction(
+            date=datetime.datetime.strptime(row['Date'], "%d/%m/%Y"),
+            payee=row['Narrative'],
+            postings=[Posting(self.name, Amount(amount, '$', reverse=reverse)),
+                      Posting(account, Amount(amount, '$', reverse=not(reverse)))])
